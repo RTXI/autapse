@@ -1,73 +1,10 @@
-/**
-* Autapse -- Couple a cell to itself
-* I took the PSC and SpikeDetecting from Autapse
-* and the DataLogger stuff from Istep
-*
-* [0:0.1:1] runs a ramp from gmax = 0 to gmax = 1 @ 0.1 per second
-* [2:10:2] runs a contant gmax @ 2 for 10 seconds
-*/
-
-#include <default_gui_model.h>
-
 #include <math.h>
 #include <vector>
 #include <string>
 #include <iostream>
 #include <sstream>
-#include <QtGui>
 
-#include "SpikeDetect.h"
-#include "PSC.h"
-#include "DataLogger.cpp"
-
-// epsilon, the fudge factor used to compare doubles
-#define EPS 1e-9
-using namespace std;
-
-class Autapse : public DefaultGUIModel
-{
-    public:
-    
-        Autapse(void);
-        virtual ~Autapse(void);
-        
-        void execute(void);
-    
-    protected:
-    
-        void update(DefaultGUIModel::update_flags_t);
-    
-    private:
-    
-        double dt;
-        double gstart, gend, grate, active, gout, V;
-        double delay, onset_delay;
-        double onset_cnt, const_cnt;
-        int isconst;
-        
-        // synaptic rev. potentials and kinetics
-        static const double esyn = 0;
-        static const double psgrise = 0.3;
-        static const double psgfall = 5.6;
-        
-        // spike detector
-        SpikeDetect *detect;
-        double minint;
-        double spikeState;
-        
-        // psg
-        PSC *psgSelf;
-        
-        // autapse conductance (units?)
-        //double gmaxSelf; 
-        
-        // DataLogger
-        DataLogger data;
-        double acquire, maxt, tcnt, cellnum;
-        string prefix, info;
-        vector<double> newdata;
-};
-
+#include "autapse.h"
 
 extern "C" Plugin::Object *createRTXIPlugin(void) {
     return new Autapse();
@@ -132,12 +69,12 @@ static DefaultGUIModel::variable_t vars[] = {
     {
         "File Prefix",
         "",
-        DefaultGUIModel::PARAMETER //| DefaultGUIModel::DOUBLE,
+        DefaultGUIModel::COMMENT //| DefaultGUIModel::DOUBLE,
     },
     {
         "File Info",
         "",
-        DefaultGUIModel::PARAMETER //| DefaultGUIModel::DOUBLE,
+        DefaultGUIModel::COMMENT //| DefaultGUIModel::DOUBLE,
     },
     {
         "onset_cnt",
@@ -292,7 +229,7 @@ void Autapse::update(DefaultGUIModel::update_flags_t flag) {
         setParameter("Active?",active);
         setParameter("Acquire?",acquire);
         setParameter("Cell (#)",cellnum);
-        setParameter("File Prefix", prefix);
+        setComment("File Prefix", QString::fromStdString(prefix));
         setParameter("Delay (ms)", delay);
         setParameter("Onset Delay (s)", onset_delay);
 
@@ -321,8 +258,8 @@ void Autapse::update(DefaultGUIModel::update_flags_t flag) {
         active = getParameter("Active?").toInt();
         acquire = getParameter("Acquire?").toInt();
         cellnum = getParameter("Cell (#)").toInt();
-        prefix = getParameter("File Prefix").data();
-        info = getParameter("File Info").data();
+        prefix = getParameter("File Prefix").toStdSting();
+        info = getParameter("File Info").toStdString();
         
         // find the end of the info string (2 characters) if any
         pos = info.find("]");
@@ -332,13 +269,13 @@ void Autapse::update(DefaultGUIModel::update_flags_t flag) {
             o << "[" << onset_delay << " -- " << gstart << ":" 
               << grate << ":" << gend << " -- " << delay << "]";
             info = o.str() + info;
-            setParameter("File Info", info);
+            setParameter("File Info", QString::fromStdString(info));
         } else {
             // just set a new string
             o << "[" << onset_delay << " -- " << gstart << ":" 
               << grate << ":" << gend << " -- " << delay << "]";
             info = o.str() + info;
-            setParameter("File Info", info);
+            setParameter("File Info", QString::fromStdString(info));
         }
         
         // set gout to be the starting value, if active
